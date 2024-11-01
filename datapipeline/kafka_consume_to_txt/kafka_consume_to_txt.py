@@ -5,8 +5,13 @@ Kafka Broker Topic에 있는 데이터를 다 가져왔으면 몇초 기다렸�
 '''
 import time
 import json
+import os
 
 from confluent_kafka import Consumer, KafkaException, KafkaError
+from dotenv import load_dotenv
+
+# 같은 경로에 있는 env 파일을 불러온다. 
+load_dotenv()
 
 # Kafka Consumer 설정
 conf = {
@@ -18,7 +23,7 @@ conf = {
 consumer = Consumer(conf)
 
 # 전체 메시지를 하나의 JSON 리스트로 저장하고 텍스트 파일에 추가하는 함수
-def write_text_file(messages, file_name="/home/kimyw22222/project/split_voice_match_text/metadata.txt"):
+def write_text_file(messages, file_name=os.getenv("TEXT_FILE_PATH")):
     with open(file_name, 'a') as f:
         f.write(json.dumps(messages, indent=4, ensure_ascii=False))  # 전체 리스트를 JSON 형식으로 쓰기
 
@@ -86,4 +91,4 @@ def consume_messages(topic, timeout=30):
         consumer.close()
 
 if __name__ == '__main__':
-    consume_messages(topic='test', timeout=30)  # 원하는 Kafka 토픽 이름과 타임아웃 설정
+    consume_messages(topic=os.getenv("KAFKA_TOPIC"), timeout=30)  # 원하는 Kafka 토픽 이름과 타임아웃 설정

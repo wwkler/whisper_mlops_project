@@ -74,8 +74,13 @@ def process_audio_from_gcs(metadata_file_path):
         # 5분 단위로 나눈 후 Whisper로 처리
         process_audio_chunks(audio_data, sr, bucket_name)
 
-# metadata.txt를 다시 빈 파일로 만드는 함수가 필요하다.
+def clear_metadata_file(file_path):
+    """메타데이터 파일을 빈 파일로 초기화"""
+    with open(file_path, 'w') as file:
+        file.write("")
+    print(f"{file_path} has been cleared.")
 
 # 실행
 metadata_file_path = './metadata.txt'
 process_audio_from_gcs(metadata_file_path)
+clear_metadata_file(metadata_file_path)
