@@ -5,6 +5,11 @@ HTTP POST 방식으로 Github Action을 촉발시킨다.
 import os
 import requests
 
+from dotenv import load_dotenv
+
+# 같은 경로에 있는 env 파일을 불러온다. 
+load_dotenv()
+
 def trigger_github_action(repo, workflow_id, token, ref="main"):
     """
     GitHub Actions workflow를 트리거하는 함수.
