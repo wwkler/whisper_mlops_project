@@ -1,0 +1,16 @@
+# Google Cloud Storage Bucket에 50시간이 되서
+# Whisper 모델 파인 튜닝 하도록 제공하는 원소스(Source)를 저장하는 Bucket에 변화가 발생하는 경우 
+# 해당 Github Action YAML 파일이 실행이 된다. 
+name: Triggered Workflow
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  example_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Run a script
+        run: echo "This workflow was triggered by an HTTP request!"

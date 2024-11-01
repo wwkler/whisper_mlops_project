@@ -35,8 +35,8 @@ def trigger_github_action(repo, workflow_id, token, ref="main"):
         print(response.json())
 
 # 사용 예시
-repo = "username/reponame"  # "owner/repo" 형식으로 변경하세요.
-workflow_id = "trigger_workflow.yml"  # 실행할 워크플로우 파일 이름
-token = "your_personal_access_token"  # GitHub Personal Access Token 입력
+repo = os.getenv("REPO")  # "owner/repo" 형식으로 변경하세요.
+workflow_id = os.getenv("WORKFLOW_ID")  # 실행할 워크플로우 파일 이름
+token = os.getenv("GITHUB_TOKEN")  # GitHub Personal Access Token 입력
 trigger_github_action(repo, workflow_id, token)
 
