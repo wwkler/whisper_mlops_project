@@ -1,0 +1,12 @@
+# Github에 올리지 않을 파일 목록 
+
+
+# 모든 경로의 .env 파일 무시
+**/.env
+
+# 모든 경로의 describe.txt 파일 무시 
+**/describe.txt
+
+# 모든 metadata.txt 파일 무시
+**/metadata.txt
+

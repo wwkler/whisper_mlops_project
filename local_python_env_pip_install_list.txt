@@ -1,0 +1,17 @@
+local_python_env 가상 환경에서 설치한 패키지 목록 
+로컬 환경에서는 pyenv 3.11.9 환경을 사용한다.
+
+python-dotenv
+google-cloud-storage
+google-cloud-pubsub 
+confluent_kafka 
+kafka-python
+torch
+torchvision 
+torchaudio 
+openai-whisper
+soundfile
+librosa
+pydub
+pytz
+google-cloud-bigquery
