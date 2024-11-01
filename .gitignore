@@ -9,3 +9,6 @@
 # 모든 metadata.txt 파일 무시
 **/metadata.txt
 
+# 모든 google_service_account.json 파일 무시
+**/google_service_account.json
+
