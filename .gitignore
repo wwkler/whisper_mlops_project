@@ -12,3 +12,5 @@
 # 모든 google_service_account.json 파일 무시
 **/google_service_account.json
 
+# Airflow logs 폴더 무시
+**/logs

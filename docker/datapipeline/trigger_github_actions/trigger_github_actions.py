@@ -4,8 +4,14 @@ HTTP POST 방식으로 Github Action을 촉발시킨다.
 '''
 import os
 import requests
+import logging 
 
 from dotenv import load_dotenv
+
+# 로그 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 # 같은 경로에 있는 env 파일을 불러온다. 
 load_dotenv()
@@ -34,10 +40,13 @@ def trigger_github_action(repo, workflow_id, token, ref="main"):
 
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 204:
-        print("Workflow triggered successfully.")
+        logger.info("Workflow triggered successfully.")
+        #print("Workflow triggered successfully.")
     else:
-        print(f"Failed to trigger workflow: {response.status_code}")
-        print(response.json())
+        logger.info(f"Failed to trigger workflow: {response.status_code}")
+        logger.info(response.json())
+        # print(f"Failed to trigger workflow: {response.status_code}")
+        # print(response.json())
 
 # 사용 예시
 repo = os.getenv("REPO")  # "owner/repo" 형식으로 변경하세요.

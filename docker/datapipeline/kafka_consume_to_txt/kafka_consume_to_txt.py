@@ -6,12 +6,18 @@ Kafka Broker Topic에 있는 데이터를 다 가져왔으면 몇초 기다렸�
 import time
 import json
 import os
+import logging 
 
 from confluent_kafka import Consumer, KafkaException, KafkaError
 from dotenv import load_dotenv
 
+# 로그 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # 같은 경로에 있는 env 파일을 불러온다. 
 load_dotenv()
+
 
 # Kafka Consumer 설정
 conf = {
@@ -41,14 +47,16 @@ def consume_messages(topic, timeout=30):
         partitions = consumer.list_topics(topic).topics[topic].partitions
         total_partitions = len(partitions)
 
-        print(f"Total partitions for topic '{topic}': {total_partitions}")
+        logger.info(f"Total partitions for topic '{topic}': {total_partitions}")
+        # print(f"Total partitions for topic '{topic}': {total_partitions}")
 
         while True:
             msg = consumer.poll(timeout=1.0)  # 메시지 가져오기 (1초 대기)
             
             # 타임아웃 확인: 마지막 메시지를 받은 후로 일정 시간이 지났다면 종료
             if time.time() - last_message_time > timeout_sec:
-                print(f"No new messages for {timeout_sec} seconds. Exiting...")
+                logger.info(f"No new messages for {timeout_sec} seconds. Exiting...")
+                #print(f"No new messages for {timeout_sec} seconds. Exiting...")
                 break
             
             if msg is None:
@@ -57,18 +65,21 @@ def consume_messages(topic, timeout=30):
                 if msg.error().code() == KafkaError._PARTITION_EOF:
                     # 파티션 끝에 도달한 경우
                     partition_eof_count += 1
-                    print(f"End of partition reached {msg.topic()}/{msg.partition()}")
+                    logger.info(f"End of partition reached {msg.topic()}/{msg.partition()}")
+                    # print(f"End of partition reached {msg.topic()}/{msg.partition()}")
 
                     # 모든 파티션 끝에 도달하면 종료
                     if partition_eof_count >= total_partitions:
-                        print("All partitions have been fully consumed. Exiting...")
+                        logger.info("All partitions have been fully consumed. Exiting...")
+                        # print("All partitions have been fully consumed. Exiting...")
                         break
                 else:
                     raise KafkaException(msg.error())
             else:
                 # 정상적으로 메시지를 수신한 경우
                 message = json.loads(msg.value().decode('utf-8'))
-                print(f"Received message: {message}" + "\n")
+                logger.info(f"Received message: {message}" + "\n")
+                # print(f"Received message: {message}" + "\n")
                 
                 attributes = message.get("message", {}).get("attributes", {})
                 bucket_id = attributes.get("bucketId")
@@ -81,7 +92,8 @@ def consume_messages(topic, timeout=30):
                 last_message_time = time.time()  # 마지막 메시지 수신 시간 업데이트
 
     except KeyboardInterrupt:
-        print("Consumer interrupted manually.")
+        logger.info("Consumer interrupted manually.")
+        # print("Consumer interrupted manually.")
     finally:
         # 메시지 소비가 끝난 후 파일에 기록
         if messages:  # 메시지가 있을 때만 파일 기록

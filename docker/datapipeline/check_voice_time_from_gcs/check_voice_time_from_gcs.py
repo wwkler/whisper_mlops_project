@@ -10,10 +10,15 @@ mv 하는 과정도 비동기로 처리한다.
 import os
 import io
 import wave
+import logging
 
 from google.cloud import storage
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
+
+# 로그 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # .env 파일에서 환경 변수 불러오기 -> GCP에 접근하기 위한 서비스 키를 얻어온다. 
 load_dotenv() 
@@ -40,10 +45,13 @@ def calculate_total_duration(bucket_name, source_wav_folder, max_workers=20):
         for future in as_completed(futures):
             try:
                 duration = future.result()
-                print(f"Processed  {futures[future]} - duration : {duration} Seconds")
+                logger.info(f"Processed  {futures[future]} - duration : {duration} Seconds")
+                # print(f"Processed  {futures[future]} - duration : {duration} Seconds")
+                
                 total_duration += duration
             except Exception as e:
-                print(f"Failed to process {futures[future]}: {e}")
+                logger.info(f"Failed to process {futures[future]}: {e}")
+                # print(f"Failed to process {futures[future]}: {e}")
 
     # 총 시간을 초에서 시간 단위로 변환
     # 총 시간을 초에서 시간 단위에서 분으로 변환 
@@ -60,7 +68,8 @@ def move_single_blob(blob, bucket, destination_folder):
     
     # text와 wav 폴더는 사라지지 않게 해야 함 
     blob.delete()
-    print(f"Moved {blob.name} to {new_blob_name}")
+    logger.info(f"Moved {blob.name} to {new_blob_name}")
+    # print(f"Moved {blob.name} to {new_blob_name}")
     
 def source_folder_move_files_destination_folder(bucket_name, source_folder, destination_folder, max_workers=10):
     """같은 bucket에서 source_folder에서 destination_folder로 텍스트 파일과 음성 파일 이동"""
@@ -78,7 +87,8 @@ def source_folder_move_files_destination_folder(bucket_name, source_folder, dest
             try:
                 future.result()  # 결과가 성공적으로 완료됐는지 확인
             except Exception as e:
-                print(f"Error moving file: {e}")
+                logger.info(f"Error moving file: {e}")
+                # print(f"Error moving file: {e}")
    
 def main():
     bucket_name = os.getenv("BUCKET_NAME")
@@ -86,12 +96,17 @@ def main():
 
     # 총 재생 시간 계산
     total_duration_hours, total_duration_minutes = calculate_total_duration(bucket_name, source_wav_folder)
-    print("\n" + f"Total audio duration in  {bucket_name}/{source_wav_folder} folder: {total_duration_hours:.2f} hours")
-    print(f"Total audio duration in  {bucket_name}/{source_wav_folder} folder: {total_duration_minutes:.2f} minutes" + "\n")
+    
+    logger.info("\n" + f"Total audio duration in  {bucket_name}/{source_wav_folder} folder: {total_duration_hours:.2f} hours")
+    # print("\n" + f"Total audio duration in  {bucket_name}/{source_wav_folder} folder: {total_duration_hours:.2f} hours")
+    
+    logger.info(f"Total audio duration in {bucket_name}/{source_wav_folder} folder: {total_duration_minutes:.2f} minutes" + "\n")
+    # print(f"Total audio duration in {bucket_name}/{source_wav_folder} folder: {total_duration_minutes:.2f} minutes" + "\n")
 
      # 도합 음성 파일이 0.05시간 이상일 떄 파일 이동 -> 추후 50시간으로 정정해야 한다. 
     if total_duration_hours >= 0.05:
-        print(f"Total duration is {total_duration_hours:.2f} hours, exceeding 0.05 hours. Moving files...")
+        logger.info(f"Total duration is {total_duration_hours:.2f} hours, exceeding 0.05 hours. Moving files...")
+        # print(f"Total duration is {total_duration_hours:.2f} hours, exceeding 0.05 hours. Moving files...")
         
         destination_wav_folder = os.getenv("DESTINATION_WAV_FOLDER")
         source_text_folder = os.getenv("SOURCE_TEXT_FOLDER")
@@ -102,7 +117,13 @@ def main():
         
         # text 폴더의 파일 이동
         source_folder_move_files_destination_folder(bucket_name, source_text_folder, destination_text_folder)
+        
+        print("airflow_trigger_github_actions")  # Docker Operator에 Xcom 저장
+        
     else:
-        print("Total duration is under 0.05 hours. No files moved.")
+        logger.info("Total duration is under 0.05 hours. No files moved.")
+        # print("Total duration is under 0.05 hours. No files moved.")
+        
+        print("airflow_end_task")  # Docker Operator에 Xcom 저장
         
 main()

@@ -5,10 +5,15 @@ Goole Cloud Storage에 split된 음성 파일과 매칭되는 text를 저장하�
 '''
 import soundfile as sf
 import uuid
+import logging
 
 from google.cloud import storage
 from io import BytesIO
 from dotenv import load_dotenv
+
+# 로그 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # .env 파일에서 환경 변수 불러오기
 load_dotenv() 
@@ -38,9 +43,11 @@ def upload_audio_to_gcs(bucket_name, audio_clip, text, sr):
     # 오디오 파일을 GCS에 업로드
     audio_blob = bucket.blob(f"check_voice_time_folder/wav/{file_id}.wav")
     audio_blob.upload_from_file(audio_file, content_type='audio/wav')
-    print(f"Uploaded {file_id}.wav to GCS.")
+    logger.info(f"Uploaded {file_id}.wav to GCS.")
+    # print(f"Uploaded {file_id}.wav to GCS.")
 
     # 텍스트 파일을 UTF-8로 인코딩하여 GCS에 업로드
     text_blob = bucket.blob(f"check_voice_time_folder/text/{file_id}.txt")
     text_blob.upload_from_string(text.encode('utf-8'), content_type='text/plain; charset=utf-8')
-    print(f"Uploaded {file_id}.txt to GCS.")
+    logger.info(f"Uploaded {file_id}.txt to GCS.")
+    # print(f"Uploaded {file_id}.txt to GCS.")

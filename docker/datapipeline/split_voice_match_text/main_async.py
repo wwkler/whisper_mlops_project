@@ -10,11 +10,16 @@
 
 import os 
 import json
+import logging
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from gcs_utils import load_audio_from_gcs, upload_audio_to_gcs
 from audio_processing import split_audio_into_chunks, transcribe_audio_with_whisper, split_audio_by_timestamps
 from dotenv import load_dotenv
+
+# 로그 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 같은 경로에 있는 env 파일을 불러온다. 
 load_dotenv()
@@ -49,11 +54,13 @@ def process_audio_chunks(audio_data, sr, bucket_name):
     with ThreadPoolExecutor() as executor:
         futures = []
         for idx, audio_chunk in enumerate(audio_chunks):
-            print(f"Processing chunk {idx+1}/{len(audio_chunks)}...")
+            logger.info(f"Processing chunk {idx+1}/{len(audio_chunks)}...")
+            # print(f"Processing chunk {idx+1}/{len(audio_chunks)}...")
             futures.append(executor.submit(process_chunk, audio_chunk, sr))
         
         for future in as_completed(futures):
-            print(f"Chunk processing result: {future.result()}")
+            logger.info(f"Chunk processing result: {future.result()}")
+            # print(f"Chunk processing result: {future.result()}")
   
 def process_audio_from_gcs(metadata_file_path):
     """메타데이터를 기반으로 GCS에서 음성 파일을 처리"""
@@ -63,7 +70,8 @@ def process_audio_from_gcs(metadata_file_path):
         bucket_name = metadata['bucketId']
         object_name = metadata['objectId']
 
-        print(f"Processing {object_name} from bucket {bucket_name}...")
+        logger.info(f"Processing {object_name} from bucket {bucket_name}...")
+        # print(f"Processing {object_name} from bucket {bucket_name}...")
 
         # GCS에서 음성 파일 불러오기
         audio_data = load_audio_from_gcs(bucket_name, object_name)
@@ -78,7 +86,9 @@ def clear_metadata_file(file_path):
     """메타데이터 파일을 빈 파일로 초기화"""
     with open(file_path, 'w') as file:
         file.write("")
-    print(f"{file_path} has been cleared.")
+    
+    logger.info(f"{file_path} has been cleared.")
+    # print(f"{file_path} has been cleared.")
 
 # 실행
 metadata_file_path = os.getenv("TEXT_FILE_PATH")

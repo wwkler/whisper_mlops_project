@@ -6,6 +6,7 @@
 
 import os 
 import json
+import logging 
 
 from gcs_utils import load_audio_from_gcs, upload_audio_to_gcs
 from audio_processing import split_audio_into_chunks, transcribe_audio_with_whisper, split_audio_by_timestamps
@@ -13,6 +14,11 @@ from dotenv import load_dotenv
 
 # 같은 경로에 있는 env 파일을 불러온다. 
 load_dotenv()
+
+# 로그 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def read_metadata_from_file(file_path):
     """메타데이터 파일에서 GCS 정보 읽기"""
@@ -23,23 +29,25 @@ def read_metadata_from_file(file_path):
 def process_audio_chunks(audio_data, sr, bucket_name):
     """음성 파일을 5분 단위로 자른 후, 각각의 구간에 대해 Whisper 처리"""
     audio_chunks = split_audio_into_chunks(audio_data, sr)
-    
-    # print(f"audio_chunks : {audio_chunks}")
 
     for idx, audio_chunk in enumerate(audio_chunks):
-        print(f"Processing chunk {idx+1}/{len(audio_chunks)}...")
+        logger.info(f"Processing chunk {idx+1}/{len(audio_chunks)}...")
+        # print(f"Processing chunk {idx+1}/{len(audio_chunks)}...")
 
         # Whisper로 텍스트 및 타임스탬프 추출
         segments = transcribe_audio_with_whisper(audio_chunk, sr)
         
-        print(f"Segments : {segments}" + "\n")
+        logger.info(f"Segments : {segments}" + "\n")
+        # print(f"Segments : {segments}" + "\n")
 
         # Whisper가 제공한 타임스탬프에 따라 음성을 세부적으로 자르기
         audio_clips, texts = split_audio_by_timestamps(audio_chunk, segments, sr)
         
-        print(f"{idx} audio_clips : {audio_clips}" + "\n")
+        logger.info(f"{idx} audio_clips : {audio_clips}" + "\n")
+        # print(f"{idx} audio_clips : {audio_clips}" + "\n")
         
-        print(f"{idx} texts : {texts}" + "\n")
+        logger.info(f"{idx} texts : {texts}" + "\n")
+        # print(f"{idx} texts : {texts}" + "\n")
 
         # 분할된 오디오 및 텍스트 파일을 GCS에 업로드
         for audio_clip, text in zip(audio_clips, texts):
@@ -53,7 +61,8 @@ def process_audio_from_gcs(metadata_file_path):
         bucket_name = metadata['bucketId']
         object_name = metadata['objectId']
 
-        print(f"Processing {object_name} from bucket {bucket_name}...")
+        logger.info(f"Processing {object_name} from bucket {bucket_name}...")
+        # print(f"Processing {object_name} from bucket {bucket_name}...")
 
         # GCS에서 음성 파일 불러오기
         audio_data = load_audio_from_gcs(bucket_name, object_name)
