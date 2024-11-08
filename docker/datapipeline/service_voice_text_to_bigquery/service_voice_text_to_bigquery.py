@@ -8,11 +8,16 @@ import json
 import base64
 import gzip 
 import os
+import logging 
 
 from google.cloud import storage, bigquery
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
+
+# 로그 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 같은 경로에 .env 파일을 가져온다. GCP와 소통하기 위한 인증 키를 가져온다. 
 load_dotenv()
@@ -70,9 +75,11 @@ def insert_data_to_bigquery(google_bigquery_table_id, wav_data, wav_metadata, te
 
     errors = bigquery_client.insert_rows_json(google_bigquery_table_id, rows_to_insert)
     if errors:
-        print(f"Failed to insert rows: {errors}")
+        logging.info(f"Failed to insert rows: {errors}")
+        # print(f"Failed to insert rows: {errors}")
     else:
-        print(f"Data inserted into BigQuery for file: {wav_metadata['filename']}")
+        logging.info(f"Data inserted into BigQuery for file: {wav_metadata['filename']}")
+        # print(f"Data inserted into BigQuery for file: {wav_metadata['filename']}")
 
 def process_single_file(blob, text_folder, google_bigquery_table_id):
     """단일 파일을 BigQuery에 저장하고 GCS에서 삭제하는 비동기 작업"""
@@ -82,7 +89,8 @@ def process_single_file(blob, text_folder, google_bigquery_table_id):
     #     print(f"File {blob.name} is not old enough to process.")
     #     return
 
-    print(f"Processing file: {blob.name}")
+    logging.info(f"Processing file: {blob.name}")
+    # print(f"Processing file: {blob.name}")
     
     # 매칭되는 텍스트 파일 찾기
     text_blob = get_matching_text_file(text_folder, blob.name.split('/')[-1])
@@ -107,9 +115,11 @@ def process_single_file(blob, text_folder, google_bigquery_table_id):
         # BigQuery에 성공적으로 삽입 후 파일 삭제 -> 임시적으로 주석 처리를 한다. 
         # blob.delete()
         # text_blob.delete()
+        # logging.info(f"Deleted files from GCS: {blob.name}, {text_blob.name}")
         # print(f"Deleted files from GCS: {blob.name}, {text_blob.name}")
     else:
-        print(f"No matching text file found for {blob.name}")
+        logging.info(f"No matching text file found for {blob.name}")
+        # print(f"No matching text file found for {blob.name}")
 
 def process_files(bucket_name, wav_folder, text_folder, google_bigquery_table_id, days=10):
     """오래된 음성 파일을 비동기 방식으로 처리"""
@@ -127,7 +137,8 @@ def process_files(bucket_name, wav_folder, text_folder, google_bigquery_table_id
             try:
                 future.result()  # 예외가 발생하면 여기서 확인
             except Exception as e:
-                print(f"Error processing file: {e}")
+                logging.info(f"Error processing file: {e}")
+                # print(f"Error processing file: {e}")
                 
 # 실행 예시
 bucket_name = os.getenv("BUCKET_NAME")

@@ -13,7 +13,7 @@ default_args = {
 }
 
 with DAG(
-    'airflow_datapipeline',
+    'airflow_main_datapipeline',
     default_args=default_args,
     description='A daily batch job DAG',
     schedule_interval='0 0 * * *',  # 매일 새벽 0시 실행
