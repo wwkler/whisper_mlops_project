@@ -22,3 +22,4 @@ transformers # HuggingFace의 transformers 라이브러리
 evaluate # WER 지표 계산을 위한 라이브러리 
 jiwer # evaluate 라이브러리의 wer 메트릭은 내부적으로 jiwer를 사용해서 WER를 계산
 accelerate # PyTorch의 학습과 분산 처리를 위해 accelerate 라이브러리를 필요
+huggingface-hub

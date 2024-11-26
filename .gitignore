@@ -14,3 +14,6 @@
 
 # Airflow logs 폴더 무시
 **/logs
+
+
+**/whisper_tiny_experiment

@@ -20,16 +20,20 @@ def main():
     text_prefix = os.getenv("SOURCE_TEXT_FOLDER") # 텍스트 폴더 
     
     # 1. 오디오와 텍스트 파일 매칭 
+    print("Matching audio and text files...")
     matched_files = match_audio_text_files(bucket_name, audio_prefix, text_prefix)
     
     # 2. 데이터셋 준비
+    print("Preparing dataset...")
     dataset = prepare_dataset(bucket_name, matched_files)
     
     # 3. Whisper 모델 파인튜닝 
+    print("Starting hyperparameter optimization...")
     study = optuna.create_study(direction='minimize') # 최소화할 매트릭으로 최적화
-    study.optimize(lambda trial : objective(trial, dataset), n_trials=30, n_jobs=2) # 병렬로 2개 작업 실행 
+    study.optimize(lambda trial : objective(trial, dataset), n_trials=2, n_jobs=-1) # 병렬로 4개 작업 실행 
     
     # 최적의 하이퍼파라미터 출력
+    print("\n=== Optimization Results ===")
     print("Best hyperparameters:", study.best_params)
     print("Best validation loss:", study.best_value)
     

@@ -3,7 +3,7 @@
 '''
 
 from gcs_utils import load_gcs_file
-from datasets import Dataset 
+from datasets import Dataset
 from concurrent.futures import ThreadPoolExecutor
 
 def prepare_dataset(bucket_name, matched_files):
