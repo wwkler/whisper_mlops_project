@@ -15,12 +15,14 @@ from dotenv import load_dotenv
 from optuna import Trial
 from evaluate import load as load_metric
 
+
 # 환경 변수 로드
 load_dotenv()
 
 # Whisper Processor 및 WER 메트릭 초기화
 processor = WhisperProcessor.from_pretrained("openai/whisper-tiny")
 wer_metric = load_metric("wer")
+cer_metric = load_metric("cer")
 
 def preprocess_function(batch):
     processed_batch = {"input_features": [], "labels": []}
@@ -105,7 +107,9 @@ def compute_metrics(pred):
         label_texts = processor.batch_decode(pred.label_ids, skip_special_tokens=True)
 
         wer = wer_metric.compute(predictions=pred_texts, references=label_texts)
-        return {"wer": wer}
+        cer = cer_metric.compute(predictions=pred_texts, references=label_texts)
+
+        return {"wer": wer, "cer" : cer}
     except Exception as e:
         print(f"Error in compute_metrics: {e}")
         raise
@@ -124,23 +128,16 @@ def fine_tune_whisper_tiny(train_dataset, eval_dataset, trial=None):
     model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny")
 
     training_args = TrainingArguments(
-        output_dir="whisper_tiny_experiment",
+        output_dir=f"whisper_tiny_experiment/trial_{trial.number}",
         per_device_train_batch_size=batch_size,
         evaluation_strategy="epoch",
-        save_strategy="epoch",
+        save_strategy="no", # 개별 trial 동안은 모델을 저장하지 않음 
         learning_rate=learning_rate,
         num_train_epochs=num_train_epochs,
-        logging_dir="whisper_tiny_experiment/logs",
-        logging_steps=100,
         fp16=True,
         push_to_hub=False,
         remove_unused_columns=False,  # 불필요한 컬럼 제거 방지
         resume_from_checkpoint=True,
-        optim="adamw_torch",         # 최적화 알고리즘 ('adamw_torch', 'adamw_apex_fused' 등)
-        load_best_model_at_end=True,  # 가장 낮은 평가 손실을 기록한 모델 로드
-        metric_for_best_model="wer",  # WER(Word Error Rate) 기준으로 가장 좋은 모델 선택
-        greater_is_better=False,      # 낮은 값이 더 나은 성능을 의미 (WER이 낮을수록 좋음)
-        save_total_limit=1,               # 최적 모델만 유지
     )
 
     trainer = Trainer(
@@ -149,32 +146,44 @@ def fine_tune_whisper_tiny(train_dataset, eval_dataset, trial=None):
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=data_collator,
-        tokenizer=processor.feature_extractor,
         compute_metrics=compute_metrics,
     )
 
     trainer.train()
-    
-    # 최적의 모델을 명시적으로 저장
-    trainer.save_model("whisper_tiny_experiment/best_model")  # 'best_model' 디렉토리에 저장
-    
-    return trainer.evaluate()["eval_loss"]
+    eval_results = trainer.evaluate()
 
+    return trainer, eval_results 
+
+# Optuna Objective 함수 
 def objective(trial, dataset):
     """
-    Optuna Objective 함수: Fine-tuning 수행 및 평가
+    Optuna의 각 trial에서 모델을 학습하고 평가하여 최적의 모델을 추적합니다.
     """
     
+    global best_metrics, best_model_dir
+
+
     print("Starting data preprocessing...")
     dataset = dataset.map(preprocess_function, batched=True)
-    print(f"dataset : {dataset[0]}")  # 데이터의 첫 샘플 출력
     
     print("Splitting dataset into train and test sets...")
     train_test_split = dataset.train_test_split(test_size=0.2)
     train_dataset, eval_dataset = train_test_split["train"], train_test_split["test"]
      
     print("Starting fine-tuning...")
-    eval_loss = fine_tune_whisper_tiny(train_dataset, eval_dataset, trial)
-    print(f"Evaluation Loss: {eval_loss}")
-    
-    return eval_loss
+    trainer, eval_results = fine_tune_whisper_tiny(train_dataset, eval_dataset, trial)
+    print(f"eval_results : {eval_results}")
+
+    wer, cer = eval_results["wer"], eval_results["cer"]
+
+
+    # 최적의 모델 갱신 (wer + cer 값이 작을 수록 최적의 모델로 판단)
+    combined_metric = wer + cer 
+
+    if best_metrics is None or combined_metric < best_metrics["combined"]:
+        best_metrics = {"wer" : wer, "cer" : cer, "combined" : combined_metric}
+        best_model_dir = "whisper_tiny_experiment/best_model"
+        trainer.save_model(best_model_dir)
+        print(f"New best model saved with WER: {wer}, CER: {cer}")
+
+    return combined_metric

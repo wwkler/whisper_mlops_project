@@ -5,6 +5,7 @@ Whisper Model Fine Tuning을 하로록 방향을 제공하는 main 함수
 
 import os 
 import optuna 
+import json
 
 from dotenv import load_dotenv
 from data_matching import match_audio_text_files
@@ -13,6 +14,10 @@ from whisper_finetuning import objective
 
 # 같은 경로에 있는 env 파일을 불러온다. 
 load_dotenv()
+
+# 최적 모델 추적 전역 변수
+best_metrics = None
+best_model_dir = None 
 
 def main():
     bucket_name = os.getenv("BUCKET_NAME") # GCS 버킷 이름 
@@ -34,8 +39,14 @@ def main():
     
     # 최적의 하이퍼파라미터 출력
     print("\n=== Optimization Results ===")
-    print("Best hyperparameters:", study.best_params)
-    print("Best validation loss:", study.best_value)
+    print("Best metrics:", best_metrics)
+    print("Best validation WER:", best_metrics["wer"])
+    print("Best validation CER:", best_metrics["cer"])
+
+    # 최적의 하이퍼파라미터 저장 
+    with open("best_metrics.json", "w") as f:
+        json.dump(best_metrics, f)
+    print("Best metrics and model saved")
     
     
 if __name__ == "__main__":
