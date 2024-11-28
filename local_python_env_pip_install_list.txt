@@ -25,3 +25,4 @@ accelerate # PyTorch의 학습과 분산 처리를 위해 accelerate 라이브�
 huggingface-hub
 scikit-learn
 hyperopt
+pyspark # hyperopt의 SparkTrials 사용

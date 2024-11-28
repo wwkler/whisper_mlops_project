@@ -2,8 +2,9 @@
 
 import evaluate
 import torch 
+import csv
 
-from hyperopt import fmin, tpe, hp, Trials
+from hyperopt import fmin, tpe, hp, Trials, SparkTrials
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments, DataCollatorWithPadding
 from torch.nn.utils.rnn import pad_sequence
 
@@ -27,9 +28,13 @@ def tune_hyperparameters(model, processor, dataset):
     
     # Define custom DataCollator
     data_collator = DataCollatorForWhisper()
+    
+    # 실험 결과 저장 CSV 초기화
+    with open("./hyperopt_results.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["learning_rate", "batch_size", "num_train_epochs", "wer", "cer", "combined_score"])
 
-
-    def objective(params):
+    def train_function(params):
         training_args = Seq2SeqTrainingArguments(
                 output_dir="./hyperopt_results",
                 eval_strategy="steps",
@@ -65,6 +70,14 @@ def tune_hyperparameters(model, processor, dataset):
         cer = cer_metric.compute(predictions=decoded_preds, references=decoded_labels)
 
         combined_score = wer + cer
+
+        # 로깅 및 csv 저장
+        print(f"Params : {params}, WER: {wer}, CER: {cer}, Combined: {combined_score}")
+        with open("./hyperopt_results.csv", "a", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow([
+                params["learning_rate"], params["batch_size"], params["num_train_epochs"], wer, cer, combined_score])
+
         return combined_score
 
      # Define search space
@@ -80,7 +93,8 @@ def tune_hyperparameters(model, processor, dataset):
 
     # Hyperparameter tuning
     trials = Trials()
-    best_params = fmin(fn=objective, space=search_space, algo=tpe.suggest, max_evals=1, trials=trials)
+    # spark_trials = SparkTrials(parallelism=3) # 병렬 작업 수 3
+    best_params = fmin(fn=train_function, space=search_space, algo=tpe.suggest, max_evals=10, trials=trials)
 
      # 매핑된 값으로 변환
     mapped_best_params = {
