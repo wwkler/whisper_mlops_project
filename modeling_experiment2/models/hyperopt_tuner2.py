@@ -1,3 +1,4 @@
+import torch.multiprocessing as mp
 import evaluate
 import torch 
 import csv
@@ -5,7 +6,7 @@ import csv
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 from torch.nn.utils.rnn import pad_sequence
 from itertools import product
-from multiprocessing import Pool
+from multiprocessing import Pool,cpu_count
 
 
 # 사용자 정의 Data Collator
@@ -22,8 +23,12 @@ class DataCollatorForWhisper:
 
 
 # 훈련 함수 정의
-def train_function(params):
-    model, processor, processed_dataset = params["model"], params["processor"], params["processed_dataset"]
+def train_function(rank, param_combinations, model, processor, processed_dataset):
+    """
+    각 워커 프로세스에서 모델을 훈련하고 결과를 저장합니다.
+    """
+
+    params = param_combinations[rank] # 현재 프로세스의 하이퍼파라미터 조합 선
     training_args = Seq2SeqTrainingArguments(
         output_dir="./hyperopt_results",
         eval_strategy="steps",
@@ -37,7 +42,7 @@ def train_function(params):
         num_train_epochs=params["num_train_epochs"],
         save_total_limit=1,
         predict_with_generate=True,
-        fp16=True,
+        fp16=False,
         remove_unused_columns=False,
     )
 
@@ -71,26 +76,17 @@ def train_function(params):
         writer.writerow([
             params["learning_rate"], params["batch_size"], params["num_train_epochs"], wer, cer, combined_score])
 
-    return combined_score
+    print(f"Process {rank} completed: {params}, Combined Score : {combined_score}")
 
-
-
-# 병렬 실행 함수
-def parallel_train(params):
-    try:
-        score= train_function(params)
-        return params, score
-    except Exception as e:
-        return params, str(e) 
 
         
 # 최적 하이퍼라미터 탐색 모듈
 def find_best_hyperparameters(model, processor, processed_dataset):
     """
-    Find the best hyperparameter combination using multiprocessing.
+    하이퍼파라미터 탐색을 병렬적으로 수행합니다. 
     """
 
-
+    # 파라미터 인자 정의
     learning_rate_choices = [0.001, 0.01, 0.1]
     batch_size_choices = [16, 32, 64]
     num_train_epoch_choices = [1, 2, 3]
@@ -102,9 +98,6 @@ def find_best_hyperparameters(model, processor, processed_dataset):
             "learning_rate" : lr, 
             "batch_size" : bs,
             "num_train_epochs" : epoch,
-            "model" : model, 
-            "processor" : processor,
-            "processed_dataset" : processed_dataset,
         }
         for lr, bs, epoch in product(learning_rate_choices, batch_size_choices, num_train_epoch_choices)
     ]
@@ -116,24 +109,30 @@ def find_best_hyperparameters(model, processor, processed_dataset):
          writer.writerow(["learning_rate", "batch_size", "num_train_epochs", "wer", "cer", "combined_score"])
 
 
-    # 멀티 프로세싱
-    num_processes = 3 # 병렬 프로세스 수 (CPU 코어 수에 따라 조정)
-    with Pool(processes=num_processes) as pool:
-         results = pool.map(parallel_train, param_combinations)
+    # 병렬 처리 
+    processes = []
+    for rank in range(len(param_combinations)):
+        p = mp.Process(target=train_function, args=(rank, param_combinations, model, processor, processed_dataset))
+        p.start()
+        processes.append(p)
 
+    for p in processes:
+        p.join()
     
-    # 최적 파라미터 탐색
+    # 최적 파라미터 추출
     best_params = None
     best_score = float("inf")
-    for params, score in results:
-        if isinstance(score, float) and score < best_score:
-            best_score = score
-            best_params = {
-                    "learning_rate" : params["learning_rate"],
-                    "batch_size" : params["batch_size"],
-                    "num_train_epochs" : params["num_train_epochs"]
-            }
-
+    with open("./hyperopt_results.csv", "r") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            score = float(row["combined_score"])
+            if score < best_score:
+                best_params = {
+                        "learning_rate" : float(row["learning_rate"]),
+                        "batch_size" : int(row["batch_size"]),
+                        "num_train_epochs" : int(row["num_train_epochs"]),
+                }
+    print(f"Best Hyperparameters : {best_params}, Best Combined Score : {best_score}")
     return best_params, best_score
 
 
