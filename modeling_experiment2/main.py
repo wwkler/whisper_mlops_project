@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 from data.gcs_loader import load_data_from_gcs
 from data.dataset_splitter import create_dataset_dict
 from models.model_loader import load_whisper_model_and_processor
-from models.hyperopt_tuner import tune_hyperparameters
-#from models.final_trainer import train_and_save_final_model
+from models.hyperopt_tuner import tune_hyperparameters # 순차적 하이퍼파라미터 조합 시도
+from models.hyperopt_tuner2 import find_best_hyperparameters # 병렬적 하이퍼파라미터 조합 시도
+#from models.final_trainer import fine_tune_best_model
 
 
 load_dotenv()
@@ -26,11 +27,16 @@ processed_dataset = create_dataset_dict(data)
 model, processor = load_whisper_model_and_processor()
 
 
-# Step 4 : Hyperparameter Tuning
-mapped_best_params = tune_hyperparameters(model, processor, processed_dataset)
-print("Best Parameters:", mapped_best_params)
+# Step 4 : Sequential Hyperparameter Tuning
+#mapped_best_params = tune_hyperparameters(model, processor, processed_dataset)
+#print("Best Parameters:", mapped_best_params)
+
+# Step 4 : Parallel_Hyperparamter Tuning
+best_params, best_score = find_best_hyperparameters(model, processor, processed_dataset)
+print("Best Hyperparameters :", best_params)
+print("Best Combined Score :", best_score)
 
 
 # Step 5 : Train and Save Final Model
-#train_and_save_final_model(best_params, model, processor, processed_dataset)
+#fine_tune_best_model(best_params, model, processor, processed_dataset)
 
