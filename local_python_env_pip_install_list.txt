@@ -27,3 +27,5 @@ scikit-learn
 hyperopt
 pyspark # hyperopt의 SparkTrials 사용
 tqdm 
+joblib
+peft
