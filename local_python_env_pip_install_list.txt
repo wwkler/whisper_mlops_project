@@ -29,3 +29,5 @@ pyspark # hyperopt의 SparkTrials 사용
 tqdm 
 joblib
 peft
+ray[tune]
+bayesian-optimization

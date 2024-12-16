@@ -12,9 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_compl
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 
-
 torch.autograd.set_detect_anomaly(True)  # Anomaly Detection 활성화
-
 
 # 세마포어 설정
 max_workers = 5

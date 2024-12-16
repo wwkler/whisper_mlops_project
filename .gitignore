@@ -19,3 +19,6 @@
 **/whisper_tiny_experiment
 
 **/hyperopt_results
+
+# whisper 실험 결과 모델 폴더 무시
+**/final_finetuned_model
