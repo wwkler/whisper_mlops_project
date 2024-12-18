@@ -1,0 +1,5 @@
+bentoml 
+transformers
+evaluate
+torch
+jiwer

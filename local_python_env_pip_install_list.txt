@@ -31,3 +31,6 @@ joblib
 peft
 ray[tune]
 bayesian-optimization
+bentoml
+fsspec 
+gcsfs
