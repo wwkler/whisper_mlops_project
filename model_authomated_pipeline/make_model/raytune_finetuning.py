@@ -124,7 +124,7 @@ def find_best_hyperparameters(model, processor, dataset):
         mode="min",
         resources_per_trial={"cpu": 12},  # Adjust resources per trial
         storage_path=str(Path("./ray_tune_results").absolute()),  # Absolute path for storage
-        num_samples=20,  # Number of samples
+        num_samples=5,  # Number of samples
     )
 
     # Get best hyperparameters

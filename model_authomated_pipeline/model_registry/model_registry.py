@@ -1,5 +1,7 @@
 import pickle
 import sys
+import os 
+import shutil
 import bentoml
 import evaluate
 import torch
@@ -64,21 +66,68 @@ def get_deploy_model():
 
 def update_model_stage(model_tag, new_stage):
     """
-    모델의 메타데이터(stage)를 업데이트합니다.
+    기존 deploy 모델을 archived 상태로 전환한다.
     """
-    model = bentoml.models.get(model_tag)
-    new_metadata = model.info.metadata
+    # 1. 기존 BentoML 모델 로드
+    bento_model = bentoml.models.get(model_tag)
+    model_path = bento_model.path
+
+    # 2. 모델 가중치 파일 경로 확인 및 로드
+    saved_model_file = os.path.join(model_path, "saved_model.pt")
+    if not os.path.exists(saved_model_file):
+        raise FileNotFoundError(f"Saved model file not found: {saved_model_file}")
+
+    # 3. 저장된 모델의 상태를 확인하여 올바르게 로드
+    loaded_data = torch.load(saved_model_file, map_location="cpu")
+    if isinstance(loaded_data, dict):
+        # state_dict로 저장된 경우
+        model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-tiny")
+        model.load_state_dict(loaded_data)
+    elif isinstance(loaded_data, WhisperForConditionalGeneration):
+        # 모델 객체 자체가 저장된 경우
+        model = loaded_data
+    else:
+        raise TypeError(f"Unexpected type for loaded data: {type(loaded_data)}")
+
+    print("Loaded model weights successfully.")
+
+    # 4. 프로세서 로드
+    processor = WhisperProcessor.from_pretrained(f"{model_path}/processor")
+
+    # 5. 메타데이터와 레이블 업데이트
+    new_metadata = bento_model.info.metadata.copy()
     new_metadata["stage"] = new_stage
 
-    # 메타데이터 업데이트
-    bentoml.models.update_metadata(model.tag, new_metadata)
-    print(f"Updated model '{model.tag}' to stage '{new_stage}'")
+    new_labels = bento_model.info.labels.copy()
+    new_labels["stage"] = new_stage
+
+    # 6. 모델을 다시 저장하여 메타데이터와 레이블 업데이트
+    updated_model = bentoml.pytorch.save_model(
+        name=bento_model.info.name,
+        model=model,
+        signatures={"generate": {"batchable": True}},
+        metadata=new_metadata,
+        labels=new_labels,
+    )
+
+    # 7. 프로세서 저장
+    processor.save_pretrained(f"{updated_model.path}/processor")
+    
+    # 8. 기존 deploy 모델 삭제
+    bentoml.models.delete(model_tag)
+    print(f"Deleted original model '{model_tag}'.")
+
+    print(f"Updated model '{updated_model.tag}' with stage '{new_stage}'")
 
 
 def save_model_with_stage(model, processor, eval_results, stage="archived"):
     """
     BentoML에 모델을 저장하고 stage 메타데이터를 추가합니다.
     """
+    
+    # Whisper 모델을 Transformer 형식으로 저장
+    final_finetuned_model_dir = "/home/kimyw22222/project/model_authomated_pipeline/final_finetuned_model"
+
     bentoml_model = bentoml.pytorch.save_model(
         name=BENTO_MODEL_TAG,
         model=model,
@@ -91,9 +140,14 @@ def save_model_with_stage(model, processor, eval_results, stage="archived"):
         },
         labels={"stage": stage, "framework": "transformers"},
     )
-
-    # 프로세서 저장
-    processor.save_pretrained(f"{bentoml_model.path}/processor")
+    
+    bentoml_model_path = bentoml_model.path
+    for file_name in os.listdir(final_finetuned_model_dir):
+        src_file = os.path.join(final_finetuned_model_dir, file_name)
+        dst_file = os.path.join(bentoml_model_path, file_name)
+        shutil.copy2(src_file, dst_file)
+        
+        
     print(f"Model saved with stage '{stage}': {bentoml_model.tag}")
     return bentoml_model
 
@@ -140,8 +194,8 @@ def model_registry_start(eval_dataset):
 
     # 3. 기존 모델과 비교 및 저장
     update_best_model_and_save(model, processor, eval_results)
-
-
+    
+   
 if __name__ == "__main__":
     # Step 4: 표준 입력으로 데이터 수신
     input_data = sys.stdin.buffer.read()
