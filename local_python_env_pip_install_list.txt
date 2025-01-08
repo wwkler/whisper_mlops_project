@@ -15,7 +15,6 @@ librosa
 pydub
 pytz
 google-cloud-bigquery
-apache-airflow # 이거 필요없음 
 datasets # HuggingFace의 datasets 라이브러리 -> 자연어 처리와 머신러닝 데이터셋을 다루기 위한 유틸리티 제공 
 optuna # Whisper 모델을 병렬로 하이퍼파라미터 최적화 수행하도록 제공
 transformers # HuggingFace의 transformers 라이브러리
